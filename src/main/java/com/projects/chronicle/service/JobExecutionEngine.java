@@ -13,9 +13,11 @@ public class JobExecutionEngine {
 
     private static final Logger log = LoggerFactory.getLogger(JobExecutionEngine.class);
     private final JobWorkerService jobWorkerService;
+    private final HandlerRegistry jobHandlerRegistry;
 
-    public JobExecutionEngine(JobWorkerService jobWorkerService){
+    public JobExecutionEngine(JobWorkerService jobWorkerService, HandlerRegistry handlerRegistry){
         this.jobWorkerService = jobWorkerService;
+        this.jobHandlerRegistry = handlerRegistry;
     }
 
     @Scheduled(fixedDelay = 1000)
@@ -33,7 +35,9 @@ public class JobExecutionEngine {
             // ==========================================
             // EXECUTE DOMAIN LOGIC HERE (NO DB TRANSACTION)
             // ==========================================
-            simulateJobExecution(job);
+            JobHandler handler = jobHandlerRegistry.get(job.getJobType());
+
+            handler.execute(job.getPayload());
 
             jobWorkerService.markComplete(job.getJobId());
             log.info("Successfully Completed Job: {}", job.getJobId());
@@ -44,7 +48,7 @@ public class JobExecutionEngine {
         }
     }
 
-    public void simulateJobExecution(BackgroundJob job) throws InterruptedException{
+    /*public void simulateJobExecution(BackgroundJob job) throws InterruptedException{
         // We will replace this with a Strategy Pattern interface later
         if ("EOD_RECONCILIATION".equals(job.getJobType())) {
             log.info("Processing reconciliation for payload: {}", job.getPayload().toString());
@@ -55,5 +59,5 @@ public class JobExecutionEngine {
                 throw new RuntimeException("Simulated network timeout connecting to Broker API");
             }
         }
-    }
+    }*/
 }
