@@ -4,10 +4,13 @@ import com.projects.chronicle.enums.JobStatus;
 import com.projects.chronicle.model.BackgroundJob;
 import com.projects.chronicle.repository.BackgroundJobRepository;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,12 +19,21 @@ import java.util.UUID;
 public class JobWorkerService {
 
     private final BackgroundJobRepository backgroundJobRepository;
+    private final StringRedisTemplate redisTemplate;
     private final String workerId;
 
-    public JobWorkerService(BackgroundJobRepository backgroundJobRepository){
+    public JobWorkerService(BackgroundJobRepository backgroundJobRepository, StringRedisTemplate stringRedisTemplate){
         this.backgroundJobRepository = backgroundJobRepository;
+        this.redisTemplate = stringRedisTemplate;
         // Generate a unique identity for this worker instance on boot
         this.workerId = "worker-" + UUID.randomUUID();
+    }
+
+    //Broadcast Heartbeat every 5 seconds
+    @Scheduled(fixedRate = 5000)
+    public void emitHeartbeat(){
+        String key = "worker:heartbeat:" + workerId;
+        redisTemplate.opsForValue().set(key, "alive", Duration.ofSeconds(15));
     }
 
     // REQUIRES_NEW ensures this claim happens in its own isolated transaction
